@@ -1,0 +1,66 @@
+import json
+import urllib.request
+
+# 1. 조회하고 싶은 스트리머 채널 ID 목록
+channel_ids = [
+    "b5ed5db484d04faf4d150aedd362f34b",
+    "45e71a76e949e16a34764deb962f9d9f",
+    "36ddb9bb4f17593b60f1b63cec86611d",
+    "a6c4ddb09cdb160478996007bff35296",
+    "4325b1d5bbc321fad3042306646e2e50",
+    "b044e3a3b9259246bc92e863e7d3f3b8",
+    "4515b179f86b67b4981e16190817c580",
+    "64d76089fba26b180d9c9e48a32600d9",
+    "8fd39bb8de623317de90654718638b10",
+    "516937b5f85cbf2249ce31b0ad046b0f",
+    "4d812b586ff63f8a2946e64fa860bbf5"
+]
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
+
+def fetch_json(url):
+    """API URL을 입력받아 JSON 데이터를 반환하는 공통 함수"""
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req) as response:
+        return json.loads(response.read().decode('utf-8'))
+
+def get_channel_info(channel_id):
+    """채널 정보 및 방송 중일 때 현재 시청자 수를 가져오는 함수"""
+    channel_url = f"https://api.chzzk.naver.com/service/v1/channels/{channel_id}"
+    live_url = f"https://api.chzzk.naver.com/service/v2/channels/{channel_id}/live-detail"
+    
+    try:
+        # 1. 채널 기본 정보 가져오기
+        channel_data = fetch_json(channel_url)['content']
+        channel_name = channel_data['channelName']
+        open_live = channel_data['openLive']
+
+        print("\n" + "=" * 40)
+        print(f"🟢 스트리머: {channel_name}")
+        
+        if open_live:
+            # 2. 방송 중일 경우 라이브 상세 정보에서 시청자 수 조회
+            live_data = fetch_json(live_url)['content']
+            live_title = live_data.get('liveTitle', '제목 없음')
+            user_count = live_data.get('concurrentUserCount', 0)
+            category = live_data.get('liveCategoryValue', '카테고리 없음')
+
+            print("🔴 상태: [생방송 중 (LIVE)]")
+            print(f"📌 방송 제목: {live_title}")
+            print(f"🎮 카테고리: {category}")
+            print(f"👀 현재 시청자 수: {user_count:,}명")
+        else:
+            print("⚪️ 상태: [방송 꺼짐 (OFF)]")
+            
+        print("=" * 40)
+
+    except Exception as e:
+        print(f"\n[ID: {channel_id}] 정보를 가져오는 데 실패했습니다: {e}")
+
+# 실행
+print("🚀 치지직 라이브 시청자 수 및 방송 상태 조회를 시작합니다...")
+for cid in channel_ids:
+    get_channel_info(cid)
+
