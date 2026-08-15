@@ -1,12 +1,8 @@
 import json
 import urllib.request
-from flask import Flask, render_template
 
-app = Flask(__name__)
-
-headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
-CHANNEL_IDS = [
+# 1. 조회하고 싶은 스트리머 채널 ID 목록
+channel_ids = [
     "b5ed5db484d04faf4d150aedd362f34b",
     "45e71a76e949e16a34764deb962f9d9f",
     "36ddb9bb4f17593b60f1b63cec86611d",
@@ -20,44 +16,40 @@ CHANNEL_IDS = [
     "4d812b586ff63f8a2946e64fa860bbf5"
 ]
 
-def get_data(url):
+# 차단 방지용 헤더
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
+
+def get_channel_info(channel_id):
+    """채널 ID를 입력받아 치지직 방송 상태 및 정보를 출력하는 함수"""
+    url = f"https://api.chzzk.naver.com/service/v1/channels/{channel_id}"
+    
     try:
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as res:
-            return json.loads(res.read().decode('utf-8'))
-    except:
-        return None
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            
+            channel_info = data['content']
+            channel_name = channel_info['channelName']
+            follower_count = channel_info['followerCount']
+            open_live = channel_info['openLive']
 
-@app.route('/')
-def home():
-    streamers = []
-    for cid in CHANNEL_IDS:
-        ch_info = get_data(f"https://api.chzzk.naver.com/service/v1/channels/{cid}")
-        if not ch_info or not ch_info.get('content'):
-            continue
-        
-        name = ch_info['content']['channelName']
-        is_live = ch_info['content']['openLive']
-        
-        live_data = {}
-        if is_live:
-            detail = get_data(f"https://api.chzzk.naver.com/service/v2/channels/{cid}/live-detail")
-            if detail and detail.get('content'):
-                c = detail['content']
-                live_data = {
-                    'title': c.get('liveTitle', '제목 없음'),
-                    'users': c.get('concurrentUserCount', 0),
-                    'category': c.get('liveCategoryValue', '일반')
-                }
-        
-        streamers.append({
-            'id': cid,
-            'name': name,
-            'is_live': is_live,
-            'live': live_data
-        })
-        
-    return render_template('index.html', streamers=streamers)
+            print("\n" + "=" * 35)
+            print(f"🟢 스트리머: {channel_name}")
+            print(f"👥 팔로워 수: {follower_count:,}명")
+            
+            if open_live:
+                print("🔴 현재 방송 상태: [생방송 중 (LIVE)]")
+            else:
+                print("⚪️ 현재 방송 상태: [방송 꺼짐 (OFF)]")
+            print("=" * 35)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    except Exception as e:
+        print(f"\n[ID: {channel_id}] 채널 정보를 가져오는 데 실패했습니다.")
+        print(f"오류 내용: {e}")
+
+# 2. 반복문을 통해 등록된 모든 채널 조회
+print("🚀 치지직 스트리머 방송 상태 조회를 시작합니다...")
+for cid in channel_ids:
+    get_channel_info(cid)
